@@ -1,0 +1,54 @@
+name: Deploy to Hugging Face Spaces
+
+# Auto-deploys the sample-clip demo to a Hugging Face Space on every push to
+# main. Requires two repo secrets (Settings -> Secrets and variables ->
+# Actions), set up once after creating the Space - see README "Live demo
+# deployment" section:
+#   HF_TOKEN       - a Hugging Face access token with "Write" permission
+#   HF_SPACE_REPO  - "your-hf-username/your-space-name"
+#
+# The Space's own README needs HF's frontmatter (sdk: docker, app_port,
+# etc.), which would look like unrendered YAML on GitHub's normal README -
+# so this workflow pushes a *copy* of the repo with deploy/hf_space_readme.md
+# swapped in as README.md, keeping the GitHub-facing README clean.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  sync-to-hub:
+    if: github.repository_owner != '' # always true; keeps Actions UI tidy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Assemble Space payload
+        run: |
+          rm -rf /tmp/space-push
+          mkdir -p /tmp/space-push
+          git archive HEAD | tar -x -C /tmp/space-push
+          cp deploy/hf_space_readme.md /tmp/space-push/README.md
+          sed -i "s#__GITHUB_REPO__#${{ github.repository }}#g" /tmp/space-push/README.md
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_REPO: ${{ secrets.HF_SPACE_REPO }}
+        run: |
+          if [ -z "$HF_TOKEN" ] || [ -z "$HF_SPACE_REPO" ]; then
+            echo "HF_TOKEN / HF_SPACE_REPO secrets not set yet - skipping deploy."
+            echo "See README 'Live demo deployment' for the one-time setup steps."
+            exit 0
+          fi
+          cd /tmp/space-push
+          git init -q
+          git checkout -q -b main
+          git config user.email "actions@github.com"
+          git config user.name "github-actions"
+          git add -A
+          git commit -q -m "Deploy ${{ github.sha }} from GitHub"
+          git push -f "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE_REPO}" main

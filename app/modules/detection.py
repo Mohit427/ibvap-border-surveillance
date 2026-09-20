@@ -29,14 +29,16 @@ def run(frame):
     {id, cls_id, label, kind ("person"|"vehicle"), conf, box (x1,y1,x2,y2), centroid (cx,cy)}
     """
     model = get_model()
-    results = model.track(
-        frame,
+    track_kwargs = dict(
         persist=True,
         classes=config.TRACKED_CLASS_IDS,
         conf=config.DETECTION_CONF,
         verbose=False,
         tracker="bytetrack.yaml",
     )
+    if config.YOLO_IMGSZ:
+        track_kwargs["imgsz"] = config.YOLO_IMGSZ
+    results = model.track(frame, **track_kwargs)
 
     detections = []
     if not results:

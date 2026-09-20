@@ -43,6 +43,14 @@ def _run_anpr_bounded(frame):
         return []
 
 
+# Detection/face inference is the main per-frame CPU cost. On a weak/shared
+# CPU we run it only every DETECT_FRAME_INTERVAL / FACE_FRAME_INTERVAL
+# frames and reuse the last result in between, so the raw video keeps
+# streaming smoothly while box positions just refresh less often.
+_last_detections: list = []
+_last_faces: list = []
+
+
 COLOR_PERSON = (60, 220, 80)
 COLOR_VEHICLE = (255, 170, 40)
 COLOR_FACE = (200, 200, 255)
@@ -85,6 +93,7 @@ def _prune_stale_tracks(state: AppState, seen_ids, now):
 
 
 def process_frame(frame, state: AppState, frame_idx: int):
+    global _last_detections, _last_faces
     now = time.time()
     h, w = frame.shape[:2]
     toggles = state.get_toggles()
@@ -95,8 +104,15 @@ def process_frame(frame, state: AppState, frame_idx: int):
     annotated = proc_frame.copy()
 
     detections = []
+    detected_this_frame = toggles["detection"] and (frame_idx % config.DETECT_FRAME_INTERVAL == 0)
     if toggles["detection"]:
-        detections = detection.run(proc_frame)
+        if detected_this_frame:
+            detections = detection.run(proc_frame)
+            _last_detections = detections
+        else:
+            detections = _last_detections
+    else:
+        _last_detections = []
 
     seen_ids = set()
     person_count = 0
@@ -121,7 +137,8 @@ def process_frame(frame, state: AppState, frame_idx: int):
     if toggles["detection"]:
         for det in detections:
             seen_ids.add(det["id"])
-            _update_track_history(state, det["id"], det["centroid"], now)
+            if detected_this_frame:
+                _update_track_history(state, det["id"], det["centroid"], now)
 
             if det["kind"] == "person":
                 person_count += 1
@@ -135,9 +152,9 @@ def process_frame(frame, state: AppState, frame_idx: int):
             box_color = COLOR_FENCE_BREACH if breach else color
             label = f"{det['label']} #{det['id']}"
             _draw_box(annotated, det["box"], box_color, label)
-            _draw_trail(annotated, state.track_history[det["id"]], color)
+            _draw_trail(annotated, state.track_history.get(det["id"], []), color)
 
-            if toggles["activity"]:
+            if toggles["activity"] and detected_this_frame:
                 flag = activity.analyze(state.track_history[det["id"]])
                 if flag and state.should_alert(det["id"], flag, config.ALERT_COOLDOWN_SECONDS):
                     snap = _encode_snapshot(annotated, det["box"])
@@ -148,7 +165,8 @@ def process_frame(frame, state: AppState, frame_idx: int):
                         snapshot_b64=snap,
                     )
 
-        _prune_stale_tracks(state, seen_ids, now)
+        if detected_this_frame:
+            _prune_stale_tracks(state, seen_ids, now)
 
     state.stats["people_count"] = person_count
     state.stats["vehicle_count"] = vehicle_count
@@ -162,8 +180,12 @@ def process_frame(frame, state: AppState, frame_idx: int):
         cv2.addWeighted(overlay, 0.12, annotated, 0.88, 0, annotated)
 
     if toggles["face"]:
-        for f in face.detect(proc_frame):
+        if frame_idx % config.FACE_FRAME_INTERVAL == 0:
+            _last_faces = face.detect(proc_frame)
+        for f in _last_faces:
             _draw_box(annotated, f["box"], COLOR_FACE, f"face {f['conf']:.2f}", thickness=1)
+    else:
+        _last_faces = []
 
     if toggles["anpr"] and frame_idx % config.ANPR_FRAME_INTERVAL == 0:
         for plate in _run_anpr_bounded(proc_frame):

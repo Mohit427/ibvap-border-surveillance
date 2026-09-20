@@ -29,6 +29,17 @@ JPEG_QUALITY = 75
 # Run the (slow) ANPR plate-detector + OCR only every N processed frames.
 ANPR_FRAME_INTERVAL = int(os.environ.get("IBVAP_ANPR_INTERVAL", "15"))
 
+# Run YOLO detection/tracking and face detection only every N processed
+# frames, redrawing the last known boxes/trails on the frames in between.
+# Video still streams every frame (smooth motion); only how often box
+# positions refresh changes. 1 = every frame (default, full quality).
+DETECT_FRAME_INTERVAL = int(os.environ.get("IBVAP_DETECT_INTERVAL", "1"))
+FACE_FRAME_INTERVAL = int(os.environ.get("IBVAP_FACE_INTERVAL", "1"))
+
+# Caps YOLO's internal inference resolution independent of PROCESS_WIDTH.
+# 0 (default) lets ultralytics pick automatically from the input frame.
+YOLO_IMGSZ = int(os.environ.get("IBVAP_YOLO_IMGSZ", "0")) or None
+
 # --- Detection ---
 DETECTION_CONF = 0.35
 PERSON_CLASS_ID = 0

@@ -19,6 +19,18 @@ services:
       # it can no longer freeze the whole feed if it stalls again).
       - key: IBVAP_ANPR_DEFAULT
         value: "0"
-      # Smaller processing frame = cheaper YOLO/face inference per frame.
+      # Smaller processing/streamed frame = cheaper inference per frame.
       - key: IBVAP_PROCESS_WIDTH
         value: "480"
+      # Caps YOLO's internal inference size independently of the streamed
+      # frame size above - results still get rescaled back to full size.
+      - key: IBVAP_YOLO_IMGSZ
+        value: "320"
+      # Run YOLO detection/tracking every 2nd frame and face detection
+      # every 3rd, reusing the last boxes in between. Video still streams
+      # every frame - only how often box positions refresh changes. This
+      # is the single biggest lever on a throttled shared free-tier vCPU.
+      - key: IBVAP_DETECT_INTERVAL
+        value: "2"
+      - key: IBVAP_FACE_INTERVAL
+        value: "3"

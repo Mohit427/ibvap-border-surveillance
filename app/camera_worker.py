@@ -93,8 +93,13 @@ class CameraWorker(threading.Thread):
 
             self.frame_idx += 1
             elapsed = time.time() - t0
-            fps_ema = (0.9 * fps_ema + 0.1 * (1.0 / max(elapsed, 1e-6)))
-            self.state.stats["fps"] = round(fps_ema, 1)
-
             if elapsed < target_dt:
                 time.sleep(target_dt - elapsed)
+
+            # Measured after the throttle sleep so this reflects the actual
+            # delivered frame rate, not raw (pre-throttle) processing speed -
+            # otherwise a fast loop iteration reports a misleadingly huge
+            # number (e.g. "129 fps") instead of the real ~TARGET_FPS cap.
+            loop_elapsed = time.time() - t0
+            fps_ema = (0.9 * fps_ema + 0.1 * (1.0 / max(loop_elapsed, 1e-6)))
+            self.state.stats["fps"] = round(fps_ema, 1)

@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+models/*.pt
+models/*.onnx
+data/uploads/
+install_log.txt
+server_log*.txt
+*.log
+.pytest_cache/

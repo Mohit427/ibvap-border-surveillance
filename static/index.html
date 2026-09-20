@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IBVAP Command Center</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="mark">IBVAP</span>
+    <span class="sub">Intelligent Border Video Analytics Platform &mdash; Prototype</span>
+  </div>
+  <div class="topbar-badges">
+    <span class="badge live" id="connBadge"><span class="dot"></span>CONNECTING</span>
+    <span class="badge" id="sourceBadge"><span class="dot"></span>SOURCE: --</span>
+    <span class="badge day" id="modeBadge"><span class="dot"></span>DAY</span>
+    <span class="badge" id="alertBadge" style="display:none"><span class="dot"></span>0 ACTIVE ALERTS</span>
+  </div>
+  <div class="clock" id="clock">--:--:--</div>
+</header>
+
+<main class="layout">
+  <section class="video-col">
+    <div class="stat-strip">
+      <div class="stat-tile"><div class="label">People</div><div class="value" id="statPeople">0</div></div>
+      <div class="stat-tile"><div class="label">Vehicles</div><div class="value" id="statVehicles">0</div></div>
+      <div class="stat-tile"><div class="label">Plates Read</div><div class="value" id="statPlates">0</div></div>
+      <div class="stat-tile crit" id="alertTile"><div class="label">Active Alerts</div><div class="value" id="statAlerts">0</div></div>
+      <div class="stat-tile"><div class="label">Proc. FPS</div><div class="value" id="statFps">0.0</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Live Feed &mdash; Annotated</h2>
+        <span class="hint" id="feedRes"></span>
+      </div>
+      <div class="video-wrap">
+        <img id="videoFeed" alt="Live annotated video feed">
+        <canvas id="fenceCanvas"></canvas>
+      </div>
+      <div class="video-toolbar">
+        <button id="btnDrawFence">Draw Fence</button>
+        <button id="btnClearFence" class="danger">Clear Fence</button>
+        <button id="btnSaveFence" class="primary" disabled>Save Fence</button>
+        <span class="hint" id="fenceHint">Click points on the video to outline a restricted zone, then Save.</span>
+      </div>
+      <div class="legend">
+        <span><i class="sw" style="background:#60dc50"></i>Person</span>
+        <span><i class="sw" style="background:#ffaa28"></i>Vehicle</span>
+        <span><i class="sw" style="background:#c8c8ff"></i>Face</span>
+        <span><i class="sw" style="background:#3cc8ff"></i>Plate</span>
+        <span><i class="sw" style="background:#ffd23c"></i>Fence (clear)</span>
+        <span><i class="sw" style="background:#ef4444"></i>Fence breach</span>
+      </div>
+    </div>
+  </section>
+
+  <aside class="sidebar">
+    <div class="panel">
+      <div class="panel-head"><h2>Video Source</h2></div>
+      <div class="panel-body">
+        <div class="source-buttons">
+          <button id="srcWebcam">Webcam</button>
+          <button id="srcSample">Sample Clip</button>
+          <label class="upload-btn"><button id="srcUploadBtn" type="button">Upload File</button></label>
+          <input type="file" id="uploadInput" accept="video/*">
+        </div>
+        <div id="sampleList" style="margin-top:10px; display:none;"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Analytics Modules</h2></div>
+      <div class="panel-body" id="toggleList"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Event Log</h2>
+        <button class="small" id="btnClearLog">Clear</button>
+      </div>
+      <div class="event-log" id="eventLog">
+        <div class="empty-state">No events yet. Alerts will appear here as they're detected.</div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

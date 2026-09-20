@@ -7,14 +7,25 @@ to it (toggles, fence polygon, source changes). All access goes through
 """
 from __future__ import annotations
 
+import os
 import threading
 import time
 from collections import deque
 from typing import Any, Optional
 
+
+def _env_bool(name: str, default: bool) -> bool:
+    val = os.environ.get(name)
+    return default if val is None else val == "1"
+
+
 DEFAULT_TOGGLES = {
     "detection": True,
-    "anpr": True,
+    # ANPR (EasyOCR) is by far the heaviest module and the one most likely
+    # to stall on a constrained shared-CPU host (e.g. Render's free tier) -
+    # default it off there via IBVAP_ANPR_DEFAULT=0 (see render.yaml).
+    # Still toggleable live from the dashboard.
+    "anpr": _env_bool("IBVAP_ANPR_DEFAULT", True),
     "face": True,
     "fence": True,
     "activity": True,

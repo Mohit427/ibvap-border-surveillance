@@ -1,4 +1,5 @@
 """Central paths and tunables for the IBVAP prototype."""
+import os
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -19,13 +20,14 @@ DEFAULT_SAMPLE_VIDEO = SAMPLE_VIDEOS_DIR / "pedestrian_crossing.mp4"
 # The whole pipeline (detection + ANPR + face + tracking) is CPU-bound.
 # We downscale every frame before running any model and cap the processing
 # rate, trading frame rate for running every module in real time on a
-# laptop CPU. Increase PROCESS_WIDTH / TARGET_FPS on faster machines.
-PROCESS_WIDTH = 640
+# laptop CPU. Increase PROCESS_WIDTH / TARGET_FPS on faster machines, or
+# lower PROCESS_WIDTH (env IBVAP_PROCESS_WIDTH) on a weaker shared-CPU host.
+PROCESS_WIDTH = int(os.environ.get("IBVAP_PROCESS_WIDTH", "640"))
 TARGET_FPS = 10
 JPEG_QUALITY = 75
 
 # Run the (slow) ANPR plate-detector + OCR only every N processed frames.
-ANPR_FRAME_INTERVAL = 15
+ANPR_FRAME_INTERVAL = int(os.environ.get("IBVAP_ANPR_INTERVAL", "15"))
 
 # --- Detection ---
 DETECTION_CONF = 0.35

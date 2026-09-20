@@ -13,3 +13,12 @@ services:
         value: 0.0.0.0
       - key: IBVAP_OPEN_BROWSER
         value: "0"
+      # ANPR (EasyOCR) is the heaviest module and the one most likely to
+      # stall a shared free-tier vCPU - off by default here, visitors can
+      # still switch it on from the dashboard (bounded by a 6s timeout so
+      # it can no longer freeze the whole feed if it stalls again).
+      - key: IBVAP_ANPR_DEFAULT
+        value: "0"
+      # Smaller processing frame = cheaper YOLO/face inference per frame.
+      - key: IBVAP_PROCESS_WIDTH
+        value: "480"

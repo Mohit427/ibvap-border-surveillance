@@ -4,6 +4,8 @@ overlay that gets streamed to the dashboard.
 """
 from __future__ import annotations
 
+import concurrent.futures
+import logging
 import time
 from collections import deque
 
@@ -12,6 +14,34 @@ import cv2
 from app import config
 from app.modules import activity, anpr, detection, face, fence, night
 from app.state import AppState
+
+logger = logging.getLogger("ibvap.pipeline")
+
+# ANPR (EasyOCR) is the slowest module by far and the one most likely to
+# stall on a weak/throttled CPU. Running it through a single-worker executor
+# with a bounded wait means a stuck OCR call can never freeze the main video
+# loop - worst case we just skip that frame's plate read and move on; if a
+# previous call is still in flight we skip resubmitting rather than piling
+# up background work.
+_anpr_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="ibvap-anpr")
+_anpr_inflight: concurrent.futures.Future | None = None
+_ANPR_TIMEOUT_S = 6.0
+
+
+def _run_anpr_bounded(frame):
+    global _anpr_inflight
+    if _anpr_inflight is not None and not _anpr_inflight.done():
+        return []
+    _anpr_inflight = _anpr_executor.submit(anpr.detect_plates, frame)
+    try:
+        return _anpr_inflight.result(timeout=_ANPR_TIMEOUT_S)
+    except concurrent.futures.TimeoutError:
+        logger.warning("ANPR took longer than %.0fs, skipping this frame's result", _ANPR_TIMEOUT_S)
+        return []
+    except Exception:
+        logger.exception("ANPR failed")
+        return []
+
 
 COLOR_PERSON = (60, 220, 80)
 COLOR_VEHICLE = (255, 170, 40)
@@ -136,7 +166,7 @@ def process_frame(frame, state: AppState, frame_idx: int):
             _draw_box(annotated, f["box"], COLOR_FACE, f"face {f['conf']:.2f}", thickness=1)
 
     if toggles["anpr"] and frame_idx % config.ANPR_FRAME_INTERVAL == 0:
-        for plate in anpr.detect_plates(proc_frame):
+        for plate in _run_anpr_bounded(proc_frame):
             label = plate["text"] or "?"
             _draw_box(annotated, plate["box"], COLOR_PLATE, f"PLATE {label}")
             if plate["text"]:

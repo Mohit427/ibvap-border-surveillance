@@ -8,7 +8,7 @@ It ingests a live webcam or a video file, runs five real CV pipelines on
 every frame (not mocked), and streams the annotated feed plus a live event
 log to a dark, command-center style dashboard in your browser.
 
-**Live demo (sample clips):** _add your Space URL here once deployed —
+**Live demo (sample clips):** _add your Render URL here once deployed —
 see [Live demo deployment](#live-demo-deployment) below._
 > A hosted container has no camera, so the demo link only runs against the
 > bundled sample clips / an uploaded file. The live-webcam experience below
@@ -45,10 +45,10 @@ sidebar at any time, live.
 
 ```bash
 docker build -t ibvap .
-docker run -p 7860:7860 ibvap
+docker run -p 8000:8000 -e PORT=8000 ibvap
 ```
 
-Open http://localhost:7860. This is the same image the hosted demo uses —
+Open http://localhost:8000. This is the same image the hosted demo uses —
 see [Live demo deployment](#live-demo-deployment).
 </details>
 
@@ -115,33 +115,28 @@ ANPR/face during the parts of the demo that don't need them.
 
 ## Live demo deployment
 
-The repo ships a `Dockerfile` and a GitHub Actions workflow
-(`.github/workflows/deploy-to-hf-spaces.yml`) that auto-deploys to a free
-[Hugging Face Space](https://huggingface.co/spaces) (Docker SDK) on every
-push to `main`. Free CPU Spaces give ~16GB RAM / 2 vCPU with no credit
-card required — enough to run torch + YOLOv8 + EasyOCR comfortably, unlike
-most free Render/Railway-style tiers (~512MB RAM).
+The repo ships a `Dockerfile` and a `render.yaml` blueprint for
+[Render](https://render.com)'s free web service tier — no credit card
+required. Render builds the `Dockerfile` directly and auto-redeploys on
+every push to `main`, no GitHub Actions/secrets needed.
 
-One-time setup (a few minutes):
+**Deploy it:** go to [dashboard.render.com/blueprints](https://dashboard.render.com/blueprints),
+connect this GitHub repo, and Render will read `render.yaml` and set the
+service up on the **Free** plan automatically. (Or: New → Web Service →
+connect the repo → Render auto-detects the Dockerfile.)
 
-1. Create a Space at [huggingface.co/new-space](https://huggingface.co/new-space) —
-   pick **Docker** as the SDK, any name (e.g. `ibvap-border-surveillance`).
-   Leave it empty; the workflow pushes the code.
-2. Get a Hugging Face access token with **write** access:
-   [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens).
-3. In the GitHub repo, go to **Settings → Secrets and variables → Actions**
-   and add two repo secrets:
-   - `HF_TOKEN` — the token from step 2
-   - `HF_SPACE_REPO` — `your-hf-username/your-space-name`
-4. Push to `main` (or re-run the workflow from the Actions tab). The Space
-   builds automatically and goes live at
-   `https://huggingface.co/spaces/your-hf-username/your-space-name`.
+Two things worth knowing about the free plan:
+- **512MB RAM.** torch + YOLOv8 + EasyOCR + OpenCV loaded together can run
+  close to that ceiling — it may run fine, or the service may crash/restart
+  under load. If it does, the fix is trimming a module (ANPR/EasyOCR is the
+  single biggest consumer at ~300-500MB) out of the hosted build rather than
+  switching provider again; ask if you want that done.
+- **Sleeps after 15 min idle**, waking on the next visit with a cold start
+  (image pull + model load) that can take a minute or so.
 
-Free Spaces sleep after a period of inactivity and wake on the next visit
-(~30-60s cold start) — expected, not a bug. Note the hosted demo is a
-single shared session: everyone visiting the link sees the same feed and
-can change the same toggles/fence, which is fine for a demo link but isn't
-a multi-tenant setup.
+Note the hosted demo is a single shared session: everyone visiting the link
+sees the same feed and can change the same toggles/fence, which is fine for
+a demo link but isn't a multi-tenant setup.
 
 ## Mapping to the problem statement
 

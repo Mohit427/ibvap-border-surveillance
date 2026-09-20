@@ -1,0 +1,15 @@
+# Render Blueprint - lets "Deploy to Render" build straight from the
+# Dockerfile with no extra setup. Free plan: 512MB RAM, sleeps after 15 min
+# idle, no credit card required. See README "Live demo deployment".
+services:
+  - type: web
+    name: ibvap-border-surveillance
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/state
+    envVars:
+      - key: IBVAP_HOST
+        value: 0.0.0.0
+      - key: IBVAP_OPEN_BROWSER
+        value: "0"

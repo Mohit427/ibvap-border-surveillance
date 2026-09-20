@@ -8,3 +8,5 @@ install_log.txt
 server_log*.txt
 *.log
 .pytest_cache/
+.claude/
+gh_auth_refresh.log
